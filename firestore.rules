@@ -1,0 +1,189 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidBloodType(bt) {
+      return bt in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'preferredLanguage', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'preferredLanguage', 'myDonorId', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() <= 100
+        && data.preferredLanguage in ['ar', 'en']
+        && (!('myDonorId' in data) || (data.myDonorId is string && data.myDonorId.size() <= 128))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDonor(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'age', 'bloodType', 'gender', 'location', 'phone',
+          'lastDonationDate', 'donationHistory', 'isAvailable', 'nextEligibleDate',
+          'aiEligibilityNote', 'isSelfProfile', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'age', 'bloodType', 'gender', 'location', 'phone',
+          'lastDonationDate', 'donationHistory', 'isAvailable', 'nextEligibleDate',
+          'aiEligibilityNote', 'isSelfProfile', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.name is string
+        && data.name.size() >= 2
+        && data.name.size() <= 100
+        && data.age is int
+        && data.age >= 16
+        && data.age <= 80
+        && isValidBloodType(data.bloodType)
+        && data.gender in ['male', 'female']
+        && data.location is string
+        && data.location.size() >= 2
+        && data.location.size() <= 120
+        && data.phone is string
+        && data.phone.size() <= 30
+        && data.lastDonationDate is string
+        && data.lastDonationDate.size() <= 20
+        && data.lastDonationDate.matches('^(\\d{4}-\\d{2}-\\d{2})?$')
+        && data.donationHistory is list
+        && data.donationHistory.size() <= 50
+        && (data.donationHistory.size() == 0 || (data.donationHistory[0] is string && data.donationHistory[0].size() <= 20))
+        && data.isAvailable is bool
+        && data.nextEligibleDate is string
+        && data.nextEligibleDate.size() <= 20
+        && data.aiEligibilityNote is string
+        && data.aiEligibilityNote.size() <= 500
+        && data.isSelfProfile is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBloodRequest(data) {
+      return data.keys().hasAll([
+          'ownerId', 'requesterName', 'neededBloodType', 'location', 'urgency',
+          'notes', 'status', 'matchedDonorIds', 'aiSummary', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'requesterName', 'neededBloodType', 'location', 'urgency',
+          'notes', 'status', 'matchedDonorIds', 'aiSummary', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.requesterName is string
+        && data.requesterName.size() <= 100
+        && isValidBloodType(data.neededBloodType)
+        && data.location is string
+        && data.location.size() >= 2
+        && data.location.size() <= 120
+        && data.urgency in ['normal', 'urgent', 'critical']
+        && data.notes is string
+        && data.notes.size() <= 400
+        && data.status in ['open', 'fulfilled']
+        && data.matchedDonorIds is list
+        && data.matchedDonorIds.size() <= 50
+        && (data.matchedDonorIds.size() == 0 || (data.matchedDonorIds[0] is string && data.matchedDonorIds[0].size() <= 128))
+        && data.aiSummary is string
+        && data.aiSummary.size() <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredLanguage', 'myDonorId', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /donors/{donorId} {
+      allow get: if isSignedIn() && isValidId(donorId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(donorId)
+        && isValidDonor(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(donorId)
+        && isValidDonor(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'lastDonationDate', 'donationHistory', 'isAvailable',
+            'nextEligibleDate', 'aiEligibilityNote', 'updatedAt'
+          ])
+          || incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'age', 'bloodType', 'gender', 'location', 'phone',
+            'lastDonationDate', 'donationHistory', 'isAvailable',
+            'nextEligibleDate', 'aiEligibilityNote', 'isSelfProfile', 'updatedAt'
+          ])
+        );
+      allow delete: if isSignedIn() && isValidId(donorId) && existing().ownerId == request.auth.uid;
+    }
+
+    match /bloodRequests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(requestId)
+        && isValidBloodRequest(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(requestId)
+        && isValidBloodRequest(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status != 'fulfilled'
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          || incoming().diff(existing()).affectedKeys().hasOnly(['matchedDonorIds', 'aiSummary', 'updatedAt'])
+        );
+      allow delete: if isSignedIn() && isValidId(requestId) && existing().ownerId == request.auth.uid;
+    }
+  }
+}

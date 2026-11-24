@@ -1,0 +1,232 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User workspace preferences and self-profile link for persistent blood donor memory.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth user UID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name.",
+          "maxLength": 100
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "enum": ["ar", "en"],
+          "description": "Preferred UI language."
+        },
+        "myDonorId": {
+          "type": "string",
+          "description": "Optional donor document ID linked as the user's own profile.",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "preferredLanguage", "createdAt", "updatedAt"]
+    },
+    "Donor": {
+      "title": "Donor",
+      "description": "Registered blood donor record with 3-month donation eligibility tracking.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner UID who manages this donor record.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Donor full name.",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "age": {
+          "type": "integer",
+          "description": "Donor age in years (16-80)."
+        },
+        "bloodType": {
+          "type": "string",
+          "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+          "description": "ABO/Rh blood group."
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["male", "female"],
+          "description": "Donor biological sex."
+        },
+        "location": {
+          "type": "string",
+          "description": "City or governorate for blood matching.",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "description": "Optional contact phone number.",
+          "maxLength": 30
+        },
+        "lastDonationDate": {
+          "type": "string",
+          "description": "ISO date YYYY-MM-DD of the most recent blood donation, or empty if never donated.",
+          "maxLength": 20,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"
+        },
+        "donationHistory": {
+          "type": "array",
+          "description": "List of past donation ISO dates (max 50 entries)."
+        },
+        "isAvailable": {
+          "type": "boolean",
+          "description": "True if more than 3 months have passed since lastDonationDate."
+        },
+        "nextEligibleDate": {
+          "type": "string",
+          "description": "ISO date YYYY-MM-DD when donor becomes eligible again.",
+          "maxLength": 20
+        },
+        "aiEligibilityNote": {
+          "type": "string",
+          "description": "AI-generated eligibility explanation.",
+          "maxLength": 500
+        },
+        "isSelfProfile": {
+          "type": "boolean",
+          "description": "Whether this record represents the current user's own profile."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "age",
+        "bloodType",
+        "gender",
+        "location",
+        "phone",
+        "lastDonationDate",
+        "donationHistory",
+        "isAvailable",
+        "nextEligibleDate",
+        "aiEligibilityNote",
+        "isSelfProfile",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BloodRequest": {
+      "title": "BloodRequest",
+      "description": "Recipient blood request with AI donor comparison results.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Owner UID who submitted the request.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requesterName": {
+          "type": "string",
+          "description": "Patient or hospital contact name.",
+          "maxLength": 100
+        },
+        "neededBloodType": {
+          "type": "string",
+          "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+          "description": "Requested ABO/Rh blood group."
+        },
+        "location": {
+          "type": "string",
+          "description": "Hospital or city location where blood is needed.",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "urgency": {
+          "type": "string",
+          "enum": ["normal", "urgent", "critical"],
+          "description": "Request urgency tier."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional clinical or contact notes.",
+          "maxLength": 400
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "fulfilled"],
+          "description": "Request lifecycle status."
+        },
+        "matchedDonorIds": {
+          "type": "array",
+          "description": "Matched donor IDs identified by AI."
+        },
+        "aiSummary": {
+          "type": "string",
+          "description": "AI comparison and compatibility summary.",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "requesterName",
+        "neededBloodType",
+        "location",
+        "urgency",
+        "notes",
+        "status",
+        "matchedDonorIds",
+        "aiSummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and language/self-donor preference."
+    },
+    "/donors/{donorId}": {
+      "schema": { "$ref": "#/entities/Donor" },
+      "description": "Registered blood donor records owned by the signed-in user."
+    },
+    "/bloodRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/BloodRequest" },
+      "description": "Blood recipient requests and AI donor matching results owned by the signed-in user."
+    }
+  }
+}

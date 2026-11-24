@@ -1,0 +1,6 @@
+{
+  "name": "Nabd · نبض",
+  "description": "Bilingual blood donor registry with persistent memory, 3-month AI eligibility tracking, and smart donor-recipient matching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
